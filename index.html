@@ -257,6 +257,23 @@ body{font-family:'Nunito','Noto Sans TC',sans-serif;background:#e8def8;overflow:
   <div class="cel-streak-info" id="celStreak" style="display:none"></div>
   <button class="cel-close2" onclick="closeCel()" id="celCloseBtn"></button>
 </div>
+
+<!-- Streak Bonus Popup -->
+<div class="lu-popup" id="streakBonusPopup" onclick="if(event.target===this)closeStreakPopup()" style="display:none;align-items:center;justify-content:center;">
+  <div class="lu-inner" style="max-width:360px;">
+    <div class="lu-content" style="background:linear-gradient(135deg,#ff6b35,#f59e0b);border-radius:24px;padding:24px;text-align:center;color:#fff;">
+      <div style="font-size:48px;margin-bottom:8px;" id="sbpFlame">&#x1F525;</div>
+      <div style="font-size:22px;font-weight:900;margin-bottom:4px;" id="sbpTitle"></div>
+      <div style="font-size:15px;opacity:.9;margin-bottom:16px;" id="sbpDays"></div>
+      <div style="background:rgba(255,255,255,.25);border-radius:16px;padding:12px;margin-bottom:12px;">
+        <div style="font-size:36px;font-weight:900;" id="sbpBonus"></div>
+        <div style="font-size:14px;opacity:.9;" id="sbpBonusLbl"></div>
+      </div>
+      <div style="font-size:13px;background:rgba(0,0,0,.2);border-radius:12px;padding:8px 12px;margin-bottom:16px;" id="sbpNext"></div>
+      <button onclick="closeStreakPopup()" style="background:#fff;color:#f59e0b;border:none;border-radius:14px;padding:10px 28px;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;" id="sbpCloseBtn"></button>
+    </div>
+  </div>
+</div>
 <!-- Level-Up Popup -->
 <div class="lu-popup" id="levelUpPopup" onclick="if(event.target===this)closeLevelUpPopup()">
   <div class="lu-inner">
@@ -584,7 +601,7 @@ const FOOD_ITEMS=[{id:'kibble',icon:'\u{1F35A}',price:10,boost:15},{id:'treat',i
 const SERVICE_ITEMS=[{id:'massage',icon:'\u{1F486}',price:30,boost:25},{id:'bath',icon:'\u{1F6C1}',price:20,boost:18}];
 const ACHS=[{id:'first',icon:'\u{1F43E}',c:s=>s.totalDays>=1},{id:'s3',icon:'\u{1F525}',c:s=>s.bestStreak>=3},{id:'s7',icon:'\u2B50',c:s=>s.bestStreak>=7},{id:'s14',icon:'\u{1F31F}',c:s=>s.bestStreak>=14},{id:'s30',icon:'\u{1F451}',c:s=>s.bestStreak>=30},{id:'b50',icon:'\u{1F9B4}',c:s=>s.totalBones>=50},{id:'b200',icon:'\u{1F48E}',c:s=>s.totalBones>=200},{id:'g1',icon:'\u{1F415}',c:s=>s.stage>=1},{id:'g2',icon:'\u{1F9AE}',c:s=>s.stage>=2}];
 const STAGES=[{need:7},{need:21},{need:999}];
-const DEF={v:6,lang:'en',breed:'shiba',dogName:'Buddy',bones:0,totalBones:0,streak:0,bestStreak:0,totalDays:0,stage:0,pin:'',pinSetup:false,mult:1,mandHabits:['Brush teeth','Do homework','Read 15 min'],kidHabits:['Pack bag','Drink water'],backpack:[],bpSize:4,equipped:{head:null,neck:null,body:null},grid:[],history:{},achievements:{},petCount:0,happiness:70,hunger:70,lastDecay:null,lastTick:null,doghouseLv:0,storiesUnlocked:[],tutDone:false,enLv:1,enXP:0,mtLv:1,mtXP:0,maLv:1,maXP:0,wrongEn:[],wrongMt:[],wrongMa:[],readDate:null,readArticleId:null,readDone:{},readScores:{},mysteryOwned:[]};
+const DEF={v:6,lang:'en',breed:'shiba',dogName:'Buddy',bones:0,totalBones:0,streak:0,bestStreak:0,totalDays:0,stage:0,pin:'',pinSetup:false,mult:1,mandHabits:['Brush teeth','Do homework','Read 15 min'],kidHabits:['Pack bag','Drink water'],backpack:[],bpSize:4,equipped:{head:null,neck:null,body:null},grid:[],history:{},achievements:{},petCount:0,happiness:70,hunger:70,lastDecay:null,lastTick:null,doghouseLv:0,storiesUnlocked:[],tutDone:false,enLv:1,enXP:0,mtLv:1,mtXP:0,maLv:1,maXP:0,wrongEn:[],wrongMt:[],wrongMa:[],readDate:null,readArticleId:null,readDone:{},readScores:{},mysteryOwned:[],activeEffects:{}};
 // XP thresholds: LV1→LV2=30, LV2→LV3=80, LV3→LV4=160, LV4→LV5=280, LV5→LV6=440, LV6→LV7=640...
 const XP_THRESH=[0,30,80,160,280,440,640,880,1160];
 const MYSTERY_ITEMS=[
@@ -597,6 +614,45 @@ const MYSTERY_ITEMS=[
 {id:'m_clover',icon:'\u{1F340}',nameEn:'Lucky Clover',nameZh:'\u5E78\u904B\u56DB\u8449\u8349',rarity:'common'},
 {id:'m_trophy',icon:'\u{1F3C6}',nameEn:'Trophy',nameZh:'\u734E\u76C3',rarity:'rare'}
 ];
+
+// Mystery item metadata
+const MYSTERY_META={
+  m_star:   {type:'deco'},
+  m_clover: {type:'deco'},
+  m_medal:  {type:'deco'},
+  m_trophy: {type:'deco'},
+  m_rainbow:{type:'consumable',effectEn:'2x bones from habits today!',effectZh:'今天習慣骨頭 x2！',useEffect:'rainbow'},
+  m_gem:    {type:'consumable',effectEn:'Next game: 2x XP!',effectZh:'下一局遊戲 XP x2！',useEffect:'gem'},
+  m_magic:  {type:'consumable',effectEn:'Buddy happiness +30 & streak +5 (3 days)!',effectZh:'快樂+30！連續獎勵+5（3天）',useEffect:'magic'},
+  m_feather:{type:'consumable',effectEn:'Backpack expands +4 slots (free)!',effectZh:'背包免費擴充+4格！',useEffect:'feather'}
+};
+function getMysteryMeta(id){return MYSTERY_META[id]||{type:'deco'};}
+function getMysteryName(id){const m=MYSTERY_ITEMS.find(x=>x.id===id);if(!m)return id;return curLang==='zh'?m.nameZh:m.nameEn;}
+function useMysteryItem(id,idx){
+  const meta=getMysteryMeta(id);
+  if(meta.type!=='consumable')return;
+  const eff=meta.useEffect;
+  if(!S.activeEffects)S.activeEffects={};
+  if(eff==='rainbow'){
+    S.activeEffects.bonusX2Date=todayKey();
+    alert('🌈 '+(curLang==='zh'?'彩虹護身符發動！\n':' Rainbow Charm activated!\n')+(curLang==='zh'?meta.effectZh:meta.effectEn));
+  }else if(eff==='gem'){
+    S.activeEffects.xpX2=true;
+    alert('💎 '+(curLang==='zh'?'水晶寶石發光！\n':' Crystal Gem glows!\n')+(curLang==='zh'?meta.effectZh:meta.effectEn));
+  }else if(eff==='magic'){
+    S.happiness=Math.min(100,S.happiness+30);
+    S.activeEffects.magicBonus=3;
+    alert('🔮 '+(curLang==='zh'?'魔法水晶球旋轉！\n':' Magic Orb spins!\n')+(curLang==='zh'?meta.effectZh:meta.effectEn));
+    updatePetStats();
+  }else if(eff==='feather'){
+    for(let i=0;i<4;i++)S.backpack.push(null);
+    S.bpSize=(S.bpSize||4)+4;
+    alert('🪶 '+(curLang==='zh'?'鳳凰羽毛飛翔！\n':' Phoenix Feather shines!\n')+(curLang==='zh'?meta.effectZh:meta.effectEn));
+    renderBP();updateHdr();
+  }
+  S.backpack[idx]=null;
+  snd('fanfare');save();renderBP();updateHdr();
+}
 function getLvFromXp(xp){let lv=1;for(let i=1;i<XP_THRESH.length;i++){if(xp>=XP_THRESH[i])lv=i+1;}return lv;}
 function xpToNextLv(xp){const lv=getLvFromXp(xp);if(lv>=XP_THRESH.length)return {cur:0,need:0,pct:100};const cur=xp-XP_THRESH[lv-1];const need=XP_THRESH[lv]-XP_THRESH[lv-1];return {cur,need,pct:Math.floor(cur/need*100)};}
 const STORY_COST=10;
@@ -1409,6 +1465,7 @@ function getCurLvInfo(type){const xp=S[gameXpField(type)]||0;const lv=getLvFromX
 // addXP adds XP to a given game (0=en,1=mt,2=ma); returns true if leveled up
 function addXP(type,amount){
   if(!amount)return false;
+  if(S.activeEffects&&S.activeEffects.xpX2){amount*=2;S.activeEffects.xpX2=false;save();}
   const xpKey=gameXpField(type),lvKey=gameLvField(type);
   const oldLv=S[lvKey]||1;
   S[xpKey]=(S[xpKey]||0)+amount;
@@ -1453,6 +1510,8 @@ function showLevelUpPopup(type,newLv,oldLv){
     S.bpSize=(S.bpSize||4)+4;
     expanded=true;
   }
+  const mystSlot=S.backpack.indexOf(null);
+  if(mystSlot>=0)S.backpack[mystSlot]=mystery.id;
   save();
   const pop=document.getElementById('levelUpPopup');if(!pop)return;
   document.getElementById('luGameName').textContent=gameLvLabel(type);
@@ -1739,7 +1798,7 @@ function renderHabits(){
 }
 function toggleH(id,h){
   const r=todayRec();if(r.completed)return;const was=!!r.habits[id],bn=Math.round(h.bones*(S.mult||1));r.habits[id]=!was;
-  if(!was){S.bones+=bn;S.totalBones+=bn;r.bonesEarned=(r.bonesEarned||0)+bn;snd('check');floatBone(bn);
+  if(!was){if(S.activeEffects&&S.activeEffects.bonusX2Date===todayKey())bn*=2;S.bones+=bn;S.totalBones+=bn;r.bonesEarned=(r.bonesEarned||0)+bn;snd('check');floatBone(bn);
     const m=T('habitReacts');setTimeout(()=>{showBubble(m[Math.floor(Math.random()*m.length)]);},300);
   }else{S.bones=Math.max(0,S.bones-bn);S.totalBones=Math.max(0,S.totalBones-bn);r.bonesEarned=Math.max(0,(r.bonesEarned||0)-bn);snd('uncheck');}
   save();renderHabits();updateHdr();
@@ -1760,18 +1819,51 @@ function updateStage(){const cd=S.totalDays;let ns=0;if(cd>=STAGES[0].need+STAGE
 function checkAch(){ACHS.forEach(a=>{if(!S.achievements[a.id]&&a.c(S)){S.achievements[a.id]=true;}});save();}
 
 // ============= CELEBRATION =============
+function calcStreakBonus(streak){
+  if(streak>=30)return 30;if(streak>=14)return 20;if(streak>=7)return 10;if(streak>=3)return 5;if(streak>=2)return 3;return 0;
+}
+function streakNextTierInfo(streak){
+  const tiers=[{days:2,bonus:3},{days:3,bonus:5},{days:7,bonus:10},{days:14,bonus:20},{days:30,bonus:30}];
+  for(const t of tiers){if(streak<t.days)return{nextBonus:t.bonus,daysNeeded:t.days-streak};}
+  return null;
+}
 document.getElementById('completeBtn').onclick=function(){
   const r=todayRec();if(r.completed)return;r.completed=true;calcStreak();
-  let bonus=0;if(S.streak>=7)bonus=10;else if(S.streak>=3)bonus=5;
-  if(bonus){S.bones+=bonus;S.totalBones+=bonus;document.getElementById('celStreak').style.display='block';document.getElementById('celStreak').textContent=T('streakBonus').replace('{n}',bonus);snd('streak');}else document.getElementById('celStreak').style.display='none';
+  const bonus=calcStreakBonus(S.streak);
+  if(bonus){S.bones+=bonus;S.totalBones+=bonus;}document.getElementById('celStreak').style.display='none';
   S.happiness=Math.min(100,S.happiness+15);
   updateStage();checkAch();document.getElementById('celBones').textContent=r.bonesEarned+(bonus?` +${bonus}`:'');
   const cm=T('celMsgs');document.getElementById('celMsg').textContent=cm[Math.floor(Math.random()*cm.length)];
   document.getElementById('celOv').classList.add('show');snd('fanfare');setTimeout(()=>snd('bark'),600);
   for(let i=0;i<20;i++)setTimeout(()=>{const e=document.createElement('div');e.className='particle2';e.textContent=['\u{1F9B4}','\u2B50','\u{1F389}','\u2728','\u{1F495}','\u{1F43E}'][Math.floor(Math.random()*6)];e.style.left=(20+Math.random()*60)+'%';e.style.top=(20+Math.random()*50)+'%';e.style.setProperty('--tx',(Math.random()-.5)*250+'px');e.style.setProperty('--ty',-(60+Math.random()*150)+'px');document.body.appendChild(e);setTimeout(()=>e.remove(),1500);},i*40);
+  window._pendingStreakBonus={streak:S.streak,bonus};
   save();renderHabits();updateHdr();
 };
-function closeCel(){document.getElementById('celOv').classList.remove('show');}
+function closeCel(){
+  document.getElementById('celOv').classList.remove('show');
+  const sb=window._pendingStreakBonus;
+  if(sb&&sb.bonus>0){window._pendingStreakBonus=null;setTimeout(()=>showStreakPopup(sb.streak,sb.bonus),300);}
+  else{window._pendingStreakBonus=null;}
+}
+function showStreakPopup(streak,bonus){
+  const zh=curLang==='zh';
+  const pop=document.getElementById('streakBonusPopup');if(!pop)return;
+  let icon='\uD83D\uDD25';
+  if(streak>=30)icon='\uD83D\uDC51';else if(streak>=14)icon='\uD83C\uDF1F';else if(streak>=7)icon='\u26A1';
+  document.getElementById('sbpFlame').textContent=icon;
+  document.getElementById('sbpTitle').textContent=zh?'\u9023\u7e8c\u7c3d\u5230\u734e\u52f5\uff01':'Streak Bonus!';
+  document.getElementById('sbpDays').textContent=zh?`\u9023\u7e8c ${streak} \u5929\uff01\uD83D\uDC4F`:`${streak} days in a row! \uD83D\uDC4F`;
+  document.getElementById('sbpBonus').textContent=`+${bonus} \uD83E\uDDB4`;
+  document.getElementById('sbpBonusLbl').textContent=zh?'\u984d\u5916\u9aa8\u982d\u734e\u52f5':'bonus bones earned!';
+  const next=streakNextTierInfo(streak);
+  const nextEl=document.getElementById('sbpNext');
+  if(next){nextEl.textContent=zh?`\u518d\u5835 ${next.daysNeeded} \u5929\u5c31\u80fd\u5347\u5230 +${next.nextBonus} \u9aa8\u982d\u7b49\u7d1a\uff01\uD83D\uDE80`:`${next.daysNeeded} more day${next.daysNeeded>1?'s':''} to reach +${next.nextBonus} bonus tier! \uD83D\uDE80`;}
+  else{nextEl.textContent=zh?'\uD83D\uDC51 \u5df2\u9054\u6700\u9ad8\u7b49\u7d1a\uff01':'\uD83D\uDC51 MAX TIER - You\'re legendary!';}
+  document.getElementById('sbpCloseBtn').textContent=zh?'\u592a\u68d2\u4e86\uff01\uD83E\uDD73':'Awesome! \uD83E\uDD73';
+  pop.style.display='flex';snd('streak');
+}
+function closeStreakPopup(){const pop=document.getElementById('streakBonusPopup');if(pop)pop.style.display='none';}
+window.closeStreakPopup=closeStreakPopup;
 
 // ============= SHOP (fixed purchase logic) =============
 function renderShop(){
@@ -1901,9 +1993,28 @@ function renderBP(){
   document.getElementById('bpSelInfo').style.display='none';
   document.getElementById('bpCount').textContent=`${bpUsed()}/${S.bpSize}`;
 }
-function getIcon(id){const ei=EQUIP_ITEMS.find(e=>e.id===id);if(ei)return ei.icon;const ti=TOY_ITEMS.find(t=>t.id===id);if(ti)return ti.icon;if(id==='doghouse'){const lv=S.doghouseLv||1;return lv>=3?'\u{1F3F0}':lv>=2?'\u{1F3E1}':'\u{1F3E0}';}const di=DECO_ITEMS.find(d=>d.id===id);if(di)return di.icon;return'?';}
-function getItemName(id){if(id==='doghouse'){const lv=S.doghouseLv||1;return lv>=3?T('dhTier3'):lv>=2?T('dhTier2'):T('dhTier1');}return(T('equipN')||{})[id]||(T('toyN')||{})[id]||(T('decoN')||{})[id]||id;}
+function getIcon(id){
+  const mysI=MYSTERY_ITEMS.find(x=>x.id===id);if(mysI)return mysI.icon;const ei=EQUIP_ITEMS.find(e=>e.id===id);if(ei)return ei.icon;const ti=TOY_ITEMS.find(t=>t.id===id);if(ti)return ti.icon;if(id==='doghouse'){const lv=S.doghouseLv||1;return lv>=3?'\u{1F3F0}':lv>=2?'\u{1F3E1}':'\u{1F3E0}';}const di=DECO_ITEMS.find(d=>d.id===id);if(di)return di.icon;return'?';}
+function getItemName(id){
+  const mysN=MYSTERY_ITEMS.find(x=>x.id===id);if(mysN)return curLang==='zh'?mysN.nameZh:mysN.nameEn;if(id==='doghouse'){const lv=S.doghouseLv||1;return lv>=3?T('dhTier3'):lv>=2?T('dhTier2'):T('dhTier1');}return(T('equipN')||{})[id]||(T('toyN')||{})[id]||(T('decoN')||{})[id]||id;}
 function bpAction(idx,id){
+  // Mystery item
+  const isMystery=MYSTERY_ITEMS.find(x=>x.id===id);
+  if(isMystery){
+    const meta2=getMysteryMeta(id);
+    const nameM=curLang==='zh'?isMystery.nameZh:isMystery.nameEn;
+    const effTxt=meta2.type==='consumable'?(curLang==='zh'?meta2.effectZh:meta2.effectEn):(curLang==='zh'?'可放置於院子裡裝飾':'Place in yard as decoration');
+    const info=document.getElementById('bpSelInfo');if(info)info.textContent=nameM+': '+effTxt;
+    if(meta2.type==='consumable'){
+      if(confirm((curLang==='zh'?'使用 ':'Use ')+nameM+'?'))useMysteryItem(id,idx);
+    }else{
+      if(confirm((curLang==='zh'?'放到院子裡？':'Place in yard? ')+nameM)){
+        placeMode=id;placeBpIdx=idx;document.getElementById('bpPopup').classList.remove('show');
+        document.getElementById('placeInd').classList.add('show');document.getElementById('placeInd').textContent=T('placeHint');
+      }
+    }
+    return;
+  }
   const isEquip=EQUIP_ITEMS.find(e=>e.id===id);
   const isToy=TOY_ITEMS.find(t=>t.id===id);
   const isDeco=DECO_ITEMS.find(d=>d.id===id);
@@ -2057,7 +2168,7 @@ function genMathQuestions(total){
   return qs;
 }
 function startMiniGame(){mgIdx=0;mgScore=0;mgCorrectCount=0;mgAnswered=false;mgActive=true;mgQuestions=genQuestions();document.getElementById('mgMenu').style.display='none';document.getElementById('mgPlay').style.display='block';document.getElementById('mgEnd').style.display='none';showMGQ();}
-function exitMiniGame(){mgActive=false;if(mgScore>0){S.bones+=mgScore;S.totalBones+=mgScore;save();updateHdr();floatBone(mgScore);}resetMiniGame();}
+function exitMiniGame(){if(!mgActive)return;mgActive=false;if(mgScore>0){S.bones+=mgScore;S.totalBones+=mgScore;save();updateHdr();floatBone(mgScore);}mgScore=0;resetMiniGame();}
 function showMGQ(){
   if(mgIdx>=mgQuestions.length||!mgActive){endMG();return;}
   mgAnswered=false;const q=mgQuestions[mgIdx];
@@ -2088,6 +2199,7 @@ function showMGQ(){
   }
 }
 function endMG(){
+  if(!mgActive)return;// guard: prevent double-count
   mgActive=false;S.bones+=mgScore;S.totalBones+=mgScore;save();updateHdr();
   document.getElementById('mgPlay').style.display='none';document.getElementById('mgEnd').style.display='block';
   document.getElementById('mgFinalTitle').textContent=T('mgOver');
