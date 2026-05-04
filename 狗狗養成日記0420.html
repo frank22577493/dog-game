@@ -2860,9 +2860,14 @@ function submitReport(){
   if(!txt)return;
   if(!S.bugReports)S.bugReports=[];
   const now=new Date();
-  S.bugReports.unshift({msg:txt,time:now.getFullYear()+'-'+(now.getMonth()+1)+'-'+now.getDate()+' '+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0')});
+  const timeStr=now.getFullYear()+'-'+(now.getMonth()+1)+'-'+now.getDate()+' '+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  S.bugReports.unshift({msg:txt,time:timeStr});
   if(S.bugReports.length>20)S.bugReports=S.bugReports.slice(0,20);
   save();
+  // Open mail client pre-filled to parent email
+  const subj=encodeURIComponent('🐕 狗狗日記 Bug 回報');
+  const body=encodeURIComponent('時間：'+timeStr+'\n狗狗名字：'+(S.dogName||'?')+'\n\n內容：\n'+txt);
+  window.location.href='mailto:frank22577493@gmail.com?subject='+subj+'&body='+body;
   document.getElementById('reportTxt').value='';
   document.getElementById('reportSent').style.display='block';
   renderBugList();
